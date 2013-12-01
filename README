@@ -187,3 +187,13 @@ not see much traffic. If however you like to monitor any and all web
 services so you know what is going on, support for New Relic is baked into
 this package. All you need to do is add the New Relic add-on to your Heroku
 application.
+
+If you want more than the basic metric information that New Relic provides
+for a Flask application, ensure you also add NEW_RELIC_CONFIG_FILE to the
+Heroku application configuration:
+
+    heroku config:set NEW_RELIC_CONFIG_FILE=newrelic.ini
+
+This will result in the addition of instrumentation for the web service
+itself, as well detail as to what is going on in the Python 'boto' module
+when communicating with Amazon Web Service APIs for S3 and Route 53.

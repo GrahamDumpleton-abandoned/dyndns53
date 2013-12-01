@@ -1,0 +1,189 @@
+dyndns53
+========
+
+This package implements a dynamic DNS registration service based on top of
+Amazon Route 53 and S3 web services.
+
+It provides a way of running your own low cost or free dynamic DNS service
+for yourself and your friends, as an alternative to more expensive paid
+services. It can work with the dynamic DNS registration feature of any
+ADSL/cable modem which provides a way of setting up dynamic DNS against a
+custom service.
+
+The service itself is set up to be hosted on Heroku. If you are within your
+limit of five single dyno instances and the DNS name for the registered
+hosts are infrequently accessed, or if you can get access to AWS credit
+vouchers, then you likely can run the combination of the Heroku site, Route
+53 and S3 services at no cost. The only thing you would need to pay for is
+your domain name.
+
+Requirements
+------------
+
+You need the following:
+
+* A Heroku account.
+* An Amazon Web Services account.
+* Your own domain name.
+* Have your domain name managed by Amazon Web Services Route 53.
+* Have setup Amazon Web Services S3.
+
+How to get these accounts set up and how to configure Route 53 to manage
+your domain name is not explained in this documentation.
+
+Installation
+------------
+
+Clone this repository so you have a copy on your local system.
+
+    git clone https://github.com/GrahamDumpleton/dyndns53.git
+
+From within the local check out of this repository, create a new Heroku
+application.
+
+    heroku apps:create
+
+Next configure the Heroku application with the details of your Amazon Web
+Services access key ID and secret access key.
+
+    heroku config:set AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY
+
+The details of what host names the dynamic DNS service will allow
+registration for and the corresponding authentication tokens are stored
+within a CSV file within an Amazon Web Services S3 bucket. Specify the name
+of the S3 bucket you have created and wish to use, plus the name of the CSV
+database file which will contain the host information.
+
+    heroku config:set DYNDNS_BUCKET=dyndns.mydomain.com DYNDNS_DATABASE=database.csv
+
+Upload the host information as a CSV database to the named file within the
+specified S3 bucket. This might for example contain:
+
+    home.dyndns.mydomain.com,b42b8ee408d165ba29588841a44edd96
+
+The format for each line is 'hostname,token'. The token can be anything and
+as long as you like. You should only use it for this one task, as most
+ADSL/cable modems which support dynamic DNS only use HTTP and as such the
+token, albeit encoded as base64 within the HTTP authentication header, can
+be readily decoded if able to be intercepted.
+
+One way of generating a more cryptic token is to use 'md5', but the use of
+'md5' is not necessary and any arbitrary string of characters is fine.
+
+    $ md5 -s 'This is my personal dyndns53 service.'
+    MD5 ("This is my personal dyndns53 service.") = b42b8ee408d165ba29588841a44edd96
+
+Note that you DO NOT need to add the database file to the repository as it
+is never pushed up directly to Heroku. Instead the web service which runs on
+Heroku will pull down the database file from S3 on startup. In this way you
+can use this repository unchanged, as all data required is taken from the
+Heroku application specific configuration settings or the database file
+stored in your S3 bucket.
+
+Now push the repository up to the Heroku application you created and
+configured.
+
+    git push heroku master
+
+To validate that the service is actually running, access the '/check_ip'
+URL of the application. For example, if Heroku indicated that the URL for
+accessing the application which was created was:
+
+    http://floating-dragon-42.herokuapp.com/
+
+use:
+
+    http://floating-dragon-42.herokuapp.com/check_ip
+
+This should tell you the IP address that the web service believes you are
+connecting from. In particular, this should be the IP address of your
+ADLS/cable modem as assigned by your ISP.
+
+Registration
+------------
+
+The best way of using the web service is to configure your ADSL/cable modem
+to perform registration for you. This way the modem will automatically
+perform registration whenever the IP address changes.
+
+To do this, look for the custom dynamic DNS service option in your modem.
+Define the settings as follows:
+
+* Update URL: http://floating-dragon-42.herokuapp.com/register_ip
+* Host name: home.dyndns.mydomain.com
+* User name: home.dyndns.mydomain.com
+* Password: b42b8ee408d165ba29588841a44edd96
+
+Substitute the actual hostname of your Heroku application in the URL given.
+
+Some modems only support HTTP and you should not actually include the
+'http://' portion of the URL or they will not work.
+
+Both the host name and user name should be the host name against which the
+IP address should be registered and should correspond to that listed in the
+database file you uploaded to your S3 bucket.
+
+The host given in the host name setting will not actually be used. That is,
+it is not necessary to substitute it into the update URL, as it will
+instead be passed as the login name when authenticating against the web
+service. Some modems will complain if you don't put something in that field
+though if they have one, so add it in just so the modem doesn't reject the
+information.
+
+Instead of configuring your modem to perform registration, you could also
+simply access the update URL using a normal browser. This will prompt you
+to provide login credentials using HTTP Basic Authentication. You should
+supply the user name and password. The result should be the same, with the
+IP address that the web service sees the request coming from being registered
+against the host name.
+
+You could also create a cron job run from a machine within your home
+network to perform the registration instead. If using 'curl', this would
+simply need to make a request against:
+
+   curl http://home.dyndns.mydomain.com:b42b8ee408d165ba29588841a44edd96@floating-dragon-42.herokuapp.com/register_ip
+
+Database
+--------
+
+If you need to add additonal hosts within your domain for which the dynamic
+DNS service is being provided, or you need to change the authentication
+token, update the information in your S3 bucket and then force a restart of
+your Heroku application.
+
+    heroku ps:restart
+
+If you are going to need to do this often, the 'dyndns53.py' script file
+can be executed directly on your local system to download and upload the
+database file.
+
+To do this, you should first create a local Python virtual environment and
+install all the required Python packages.
+
+    virtualenv .
+    source bin/activate
+    pip install -r requirements.txt
+
+Now set and export as environment variables in the local shell enviroment:
+
+* AWS_ACCESS_KEY_ID
+* AWS_SECRET_ACCESS_KEY
+* DYNDNS_BUCKET
+* DYNDNS_DATABASE
+
+You can then run:
+
+    python dyndns53.py download-database database.csv
+
+Modify the 'database.csv' file and upload the database back to S3.
+
+    python dyndns53.py upload-database database.csv
+
+Monitoring
+----------
+
+The dynamic DNS service would not generally be accessed that often and so
+not see much traffic. If however you like to monitor any and all web
+services so you know what is going on, support for New Relic is baked into
+this package. All you need to do is add the New Relic add-on to your Heroku
+application.

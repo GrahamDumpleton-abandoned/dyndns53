@@ -1,0 +1,10 @@
+Flask==0.10.1
+Flask-BasicAuth==0.2.0
+Jinja2==2.7.1
+MarkupSafe==0.18
+Werkzeug==0.9.4
+boto==2.9.6
+waitress==0.8.7
+itsdangerous==0.23
+wsgiref==0.1.2
+newrelic==2.6.0.5

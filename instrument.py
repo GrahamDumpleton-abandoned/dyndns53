@@ -41,7 +41,12 @@ def wrapper_AWSAuthConnection_make_request(wrapped, instance, args, kwargs):
 
     url = '%s://%s%s' % (instance.protocol, instance.host, instance.path)
 
-    with ExternalTrace(transaction, 'boto', url):
+    def _bind_params(method, *args, **kwargs):
+        return method
+
+    method = _bind_params(*args, **kwargs)
+
+    with ExternalTrace(transaction, 'boto', url, method):
         return wrapped(*args, **kwargs)
 
 def instrument_boto_connection(module):

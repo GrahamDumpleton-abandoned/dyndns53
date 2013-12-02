@@ -1,5 +1,5 @@
 from newrelic.agent import (background_task, function_trace,
-        add_custom_parameter, wrap_function_trace, wrap_background_task,
+        add_custom_parameter, wrap_function_trace, BackgroundTaskWrapper,
         wrap_function_wrapper, current_transaction, ExternalTrace,
         FunctionTraceWrapper)
 
@@ -24,10 +24,10 @@ def instrument_dyndns53(module):
 
     wrap_function_trace(module, 'BasicAuthDatabase.check_credentials')
 
-    wrap_background_task(module, 'upload_database_command')
-    wrap_background_task(module, 'download_database_command')
-
     wrap_function_wrapper(module, 'register_ip', wrapper_register_ip)
+
+    for name, callback in list(module._commands.items()):
+        module._commands[name] = BackgroundTaskWrapper(callback)
 
 def wrap_object_function_traces(obj, names):
     for name in names:

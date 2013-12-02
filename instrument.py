@@ -39,12 +39,15 @@ def wrapper_AWSAuthConnection_make_request(wrapped, instance, args, kwargs):
     if transaction is None:
         return wrapped(*args, **kwargs)
 
-    def _bind_params(method, path, *args, **kwargs):
-        return method, path
+    def _bind_params(method, path, headers=None, data='', host=None,
+            *args, **kwargs):
+        return method, path, host
 
-    method, path = _bind_params(*args, **kwargs)
+    method, path, host = _bind_params(*args, **kwargs)
 
-    url = '%s://%s%s' % (instance.protocol, instance.host, path)
+    host = host or instance.host
+
+    url = '%s://%s%s' % (instance.protocol, host, path)
 
     with ExternalTrace(transaction, 'boto', url, method):
         return wrapped(*args, **kwargs)

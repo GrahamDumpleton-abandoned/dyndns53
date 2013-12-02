@@ -153,7 +153,7 @@ your Heroku application.
 
     heroku ps:restart
 
-If you are going to need to do this often, the 'dyndns53.py' script file
+If you are going to need to do this often, the 'admin.py' script file
 can be executed directly on your local system to download and upload the
 database file.
 
@@ -173,11 +173,11 @@ Now set and export as environment variables in the local shell enviroment:
 
 You can then run:
 
-    python dyndns53.py download-database database.csv
+    python admin.py download-database database.csv
 
 Modify the 'database.csv' file and upload the database back to S3.
 
-    python dyndns53.py upload-database database.csv
+    python admin.py upload-database database.csv
 
 Monitoring
 ----------

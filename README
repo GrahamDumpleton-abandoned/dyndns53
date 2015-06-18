@@ -257,7 +257,7 @@ For Heroku you would run:
 
 For OpenShift you would run:
 
-    rhc app restart
+    rhc app restart -a dyndns53
 
 If you are going to need to do this often, the 'admin.py' script file
 can be executed directly on your local system to download and upload the

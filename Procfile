@@ -1,1 +1,1 @@
-web: $PWD/run-web.sh
+web: waitress-serve --port=$PORT dyndns53:app

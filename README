@@ -10,19 +10,33 @@ services. It can work with the dynamic DNS registration feature of any
 ADSL/cable modem which provides a way of setting up dynamic DNS against a
 custom service.
 
-The service itself is set up to be hosted on Heroku. If you are within your
-limit of five single dyno instances and the DNS name for the registered
-hosts are infrequently accessed, or if you can get access to AWS credit
-vouchers, then you likely can run the combination of the Heroku site, Route
-53 and S3 services at no cost. The only thing you would need to pay for is
-your domain name.
+The service itself is set up to be hosted on Heroku or OpenShift V2.
+
+If you are on Heroku, you should be able to run this on a free dyno as
+requests against it would be infrequent enough that the dyno would sleep
+for more than the required minimum 6 hours per day.
+
+If you are on OpenShift V2, then you would need to allocate one of the
+three gears which are provided with the OpenShift Online free tier.
+
+Combine free tier hosting from Heroku or OpenShift and access to AWS credit
+vouchers, if you can obtain them, then you likely can run the combination
+of the Heroku site, Route 53 and S3 services at no cost. Even if you cannot
+get AWS credit vouchers, the monthly cost for Route 53 and S3 is only going
+to be about $1 a month.
+
+The only other thing you would need is a domain name. This you will have to
+pay for separately, the cost of which will depend on what domain name
+suffix you want. If you already have an existing domain, you could use a
+sub domain of it, but in doing that, you would need to move management of
+the whole domain to Route 53.
 
 Requirements
 ------------
 
 You need the following:
 
-* A Heroku account.
+* A Heroku or OpenShift account.
 * An Amazon Web Services account.
 * Your own domain name.
 * Have your domain name managed by Amazon Web Services Route 53.
@@ -31,8 +45,8 @@ You need the following:
 How to get these accounts set up and how to configure Route 53 to manage
 your domain name is not explained in this documentation.
 
-Installation
-------------
+Installation (Heroku)
+---------------------
 
 Clone this repository so you have a copy on your local system.
 
@@ -99,6 +113,86 @@ This should tell you the IP address that the web service believes you are
 connecting from. In particular, this should be the IP address of your
 ADLS/cable modem as assigned by your ISP.
 
+Installation (OpenShift V2)
+---------------------------
+
+Clone this repository so you have a copy on your local system.
+
+    git clone https://github.com/GrahamDumpleton/dyndns53.git
+
+From within the local check out of this repository, create a new OpenShift
+application. Tell OpenShift not to checkout its sample git repository.
+
+    rhc app-create dyndns53 python-2.7 --no-git
+
+Next configure the OpenShift application with the details of your Amazon Web
+Services access key ID and secret access key.
+
+    rhc set-env AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY
+
+The details of what host names the dynamic DNS service will allow
+registration for and the corresponding authentication tokens are stored
+within a CSV file within an Amazon Web Services S3 bucket. Specify the name
+of the S3 bucket you have created and wish to use, plus the name of the CSV
+database file which will contain the host information.
+
+    rhc set-env DYNDNS_BUCKET=dyndns.mydomain.com DYNDNS_DATABASE=database.csv
+
+Upload the host information as a CSV database to the named file within the
+specified S3 bucket. This might for example contain:
+
+    home.dyndns.mydomain.com,b42b8ee408d165ba29588841a44edd96
+
+The format for each line is 'hostname,token'. The token can be anything and
+as long as you like. You should only use it for this one task, as most
+ADSL/cable modems which support dynamic DNS only use HTTP and as such the
+token, albeit encoded as base64 within the HTTP authentication header, can
+be readily decoded if able to be intercepted.
+
+One way of generating a more cryptic token is to use 'md5', but the use of
+'md5' is not necessary and any arbitrary string of characters is fine.
+
+    $ md5 -s 'This is my personal dyndns53 service.'
+    MD5 ("This is my personal dyndns53 service.") = b42b8ee408d165ba29588841a44edd96
+
+Note that you DO NOT need to add the database file to the repository as it
+is never pushed up directly to OpenShift. Instead the web service which
+runs on OpenShift will pull down the database file from S3 on startup.
+In this way you can use this repository unchanged, as all data required
+is taken from the OpenShift application specific configuration settings
+or the database file stored in your S3 bucket.
+
+Now push the repository up to the OpenShift application you created and
+configured.
+
+To be able to do this we first need to add OpenShift as a remote for the
+repository.
+
+    git remote add openshift ssh://<app-id>@dyndns53-<account-name>.rhcloud.com/~/git/dyndns53.git/
+
+The actual URI for the OpenShift repository should be copied from the
+output of creating the OpenShift application to begin with.
+
+Now push the repository. The first time you do this you will need to do a
+force push as we want to actually replace the contents of the OpenShift
+repository since the repository on GITHUB will be used as the origin.
+
+    git push -f openshift master
+
+To validate that the service is actually running, access the '/check_ip'
+URL of the application. For example, if OpenShift indicated that the URL for
+accessing the application which was created was:
+
+    http://dyndns53-<account-name>.rhcloud.com/
+
+use:
+
+    http://dyndns53-<account-name>.rhcloud.com/check_ip
+
+This should tell you the IP address that the web service believes you are
+connecting from. In particular, this should be the IP address of your
+ADLS/cable modem as assigned by your ISP.
+
 Registration
 ------------
 
@@ -114,7 +208,10 @@ Define the settings as follows:
 * User name: home.dyndns.mydomain.com
 * Password: b42b8ee408d165ba29588841a44edd96
 
-Substitute the actual hostname of your Heroku application in the URL given.
+The URL given here as an example is that which you might see something
+similar to if using Heroku. Substitute the actual URL with that for your
+Heroku or OpenShift application and add the sub URL of '/register_ip'
+at the end.
 
 Some modems only support HTTP and you should not actually include the
 'http://' portion of the URL or they will not work.
@@ -143,15 +240,24 @@ simply need to make a request against:
 
    curl http://home.dyndns.mydomain.com:b42b8ee408d165ba29588841a44edd96@floating-dragon-42.herokuapp.com/register_ip
 
+Again, substitute the URL as above with that for your specific application
+under Heroku or OpenShift.
+
 Database
 --------
 
 If you need to add additonal hosts within your domain for which the dynamic
 DNS service is being provided, or you need to change the authentication
 token, update the information in your S3 bucket and then force a restart of
-your Heroku application.
+your Heroku or OpenShift application.
+
+For Heroku you would run:
 
     heroku ps:restart
+
+For OpenShift you would run:
+
+    rhc app restart
 
 If you are going to need to do this often, the 'dyndns53.py' script file
 can be executed directly on your local system to download and upload the
@@ -178,22 +284,3 @@ You can then run:
 Modify the 'database.csv' file and upload the database back to S3.
 
     python dyndns53.py upload-database database.csv
-
-Monitoring
-----------
-
-The dynamic DNS service would not generally be accessed that often and so
-not see much traffic. If however you like to monitor any and all web
-services so you know what is going on, support for New Relic is baked into
-this package. All you need to do is add the New Relic add-on to your Heroku
-application.
-
-If you want more than the basic metric information that New Relic provides
-for a Flask application, ensure you also add NEW_RELIC_CONFIG_FILE to the
-Heroku application configuration:
-
-    heroku config:set NEW_RELIC_CONFIG_FILE=newrelic.ini
-
-This will result in the addition of instrumentation for the web service
-itself, as well detail as to what is going on in the Python 'boto' module
-when communicating with Amazon Web Service APIs for S3 and Route 53.

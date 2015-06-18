@@ -128,7 +128,7 @@ application. Tell OpenShift not to checkout its sample git repository.
 Next configure the OpenShift application with the details of your Amazon Web
 Services access key ID and secret access key.
 
-    rhc set-env AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY
+    rhc set-env -a dyndns53 AWS_ACCESS_KEY_ID=XXX AWS_SECRET_ACCESS_KEY=YYY
 
 The details of what host names the dynamic DNS service will allow
 registration for and the corresponding authentication tokens are stored
@@ -136,7 +136,7 @@ within a CSV file within an Amazon Web Services S3 bucket. Specify the name
 of the S3 bucket you have created and wish to use, plus the name of the CSV
 database file which will contain the host information.
 
-    rhc set-env DYNDNS_BUCKET=dyndns.mydomain.com DYNDNS_DATABASE=database.csv
+    rhc set-env -a dyndns53 DYNDNS_BUCKET=dyndns.mydomain.com DYNDNS_DATABASE=database.csv
 
 Upload the host information as a CSV database to the named file within the
 specified S3 bucket. This might for example contain:

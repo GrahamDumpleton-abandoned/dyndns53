@@ -209,8 +209,3 @@ def main():
         sys.exit(1)
 
     callback(sys.argv[2:])
-
-# Dynamically determine if being run as admin script or server.
-
-if __name__ == '__main__':
-    main()

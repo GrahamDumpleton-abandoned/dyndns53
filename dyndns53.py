@@ -13,6 +13,7 @@ from flask.ext.basicauth import BasicAuth
 from boto import connect_route53, connect_s3
 from boto.route53.exception import DNSServerError
 from boto.s3.key import Key
+from boto.s3.connection import OrdinaryCallingFormat
 
 # Server database management and setup.
 
@@ -36,7 +37,7 @@ def initialise_database():
 
 def download_database():
     bucket_name = os.environ['DYNDNS_BUCKET']
-    connection = connect_s3()
+    connection = connect_s3(calling_format=OrdinaryCallingFormat())
     bucket = connection.get_bucket(bucket_name)
     bucket_data = Key(bucket)
     bucket_data.key = os.environ['DYNDNS_DATABASE']
@@ -44,7 +45,7 @@ def download_database():
 
 def upload_database(data):
     bucket_name = os.environ['DYNDNS_BUCKET']
-    connection = connect_s3()
+    connection = connect_s3(calling_format=OrdinaryCallingFormat())
     bucket = connection.get_bucket(bucket_name)
     bucket_data = Key(bucket)
     bucket_data.key = os.environ['DYNDNS_DATABASE']
